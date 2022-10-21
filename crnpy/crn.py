@@ -133,6 +133,24 @@ class CRN(object):
         :rtype: tuple of strings.
         """
         return tuple(self._species)
+    
+    @property
+    def reaction_order(self):
+        """Tuple of the network species.
+
+        :Example:
+
+        >>> from crnpy.crn import CRN, from_react_strings
+        >>> net = from_react_strings(["A1 ->(k1) A2 + A3", "A2 ->(k2) 2 A3"])
+        >>> net.species
+        ('A1', 'A2', 'A3')
+
+        The tuple of species is read-only, and can change if the reactions are updated,
+        or if a reduction method is applied to eliminate some species.
+
+        :rtype: tuple of strings.
+        """
+        return tuple(self._reaction_orders)
 
 
     @property
@@ -288,6 +306,8 @@ class CRN(object):
         self._reactionids = [r.reactionid for r in self.reactions]
         self._rates = sp.Matrix([r.rate for r in self.reactions])
         self._kinetic_params = [r.kinetic_param for r in self.reactions]
+        self._reaction_orders = [r.reaction_order for r in self.reactions]
+        
 
         self._n_species = len(self.species)
 

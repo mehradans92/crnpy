@@ -34,14 +34,17 @@ class Reaction(object):
 
     Attributes: reactionid, reactant, product, rate, kinetic_param.
     """
-    def __init__(self, reactionid, reactant, product, rate):
+
+    def __init__(self, reactionid, reactant, product, rate, reaction_order=1):
         self._reactionid = reactionid
         self._reactant = reactant
         self._product = product
         self._rate = rate
+        self._reaction_order = reaction_order
 
     def __copy__(self):
         return Reaction(self.reactionid, self.reactant, self.product, self.rate)
+
     def __deepcopy__(self, memo):
         return Reaction(copy.deepcopy(self.reactionid, self.reactant, self.product, self.rate, memo))
 
@@ -78,12 +81,22 @@ class Reaction(object):
         return self._rate
 
     @property
+    def reaction_order(self):
+        """String id of the reaction.
+
+        :type: string.
+        """
+        return self._reaction_order
+
+    @property
     def _rate(self):
         return self.__rate
+
     @_rate.setter
     def _rate(self, value):
         self.__rate = value
-        if value is not None: self.__kinetic_param = self.rate / self.reactant.ma()
+        if value is not None:
+            self.__kinetic_param = self.rate / self.reactant.ma()
 
     @property
     def kinetic_param(self):
@@ -97,6 +110,7 @@ class Reaction(object):
     @property
     def _kinetic_param(self):
         return self.__kinetic_param
+
     @_kinetic_param.setter
     def _kinetic_param(self, value):
         self._rate = (value * self.reactant.ma()).cancel()
@@ -104,16 +118,16 @@ class Reaction(object):
     def __str__(self):
         return self.format()
 
-    def  __repr__(self):
+    def __repr__(self):
         return self.__str__()
 
     def __eq__(self, reaction):
         return self.reactant == reaction.reactant and \
-               self.product == reaction.product and \
-               (((self.rate - reaction.rate) == 0) or
+            self.product == reaction.product and \
+            (((self.rate - reaction.rate) == 0) or
                 ((self.rate - reaction.rate).cancel() == 0))
 
-    def format(self, rate = False, precision = 3):
+    def format(self, rate=False, precision=3):
         """Return a string of the form
         reactant complex ->(k) product complex
         where k is the generalised kinetic parameter of the reaction if rate = False,
@@ -123,10 +137,11 @@ class Reaction(object):
         """
         return "{}: {} ->{} {}".format(self.reactionid,
                                        self.reactant,
-                                       "(" + self.format_kinetics(rate, precision) + ")" if self.rate else "",
+                                       "(" + self.format_kinetics(rate,
+                                                                  precision) + ")" if self.rate else "",
                                        self.product)
 
-    def format_kinetics(self, rate = False, precision = 3):
+    def format_kinetics(self, rate=False, precision=3):
         """Convert the kinetic parameter or rate to string.
         If rate = True, return a string representing the rate,
         otherwise one representing the kinetic parameter.
@@ -146,7 +161,7 @@ class Reaction(object):
                     k = str(self.kinetic_param)
         return k
 
-    def latex(self, rate = False):
+    def latex(self, rate=False):
         """Return the latex code for the reaction.
         By default the kinetic parameter of the reaction is included.
         To use the rate instead, use rate = True.
@@ -165,10 +180,11 @@ class Reaction(object):
         """
         return "{}: {} {} {}".format(sp.latex(self.reactionid),
                                      sp.latex(self.reactant.symp()),
-                                     str("\\xrightarrow{" + sp.latex(self.rate if rate else self.kinetic_param) + "}") if self.rate else str("\\rightarrow"),
+                                     str("\\xrightarrow{" + sp.latex(
+                                         self.rate if rate else self.kinetic_param) + "}") if self.rate else str("\\rightarrow"),
                                      sp.latex(self.product.symp()))
 
-    def remove_react_prod(self, species = None):
+    def remove_react_prod(self, species=None):
         """Remove common species between reactant and product.
 
         If a species is specified, only that species is removed.
@@ -191,10 +207,12 @@ class Reaction(object):
         else:
             if species in reactant and species in product:
                 if reactant[species] > product[species]:
-                    self.reactant[species] = reactant[species] - product[species]
+                    self.reactant[species] = reactant[species] - \
+                        product[species]
                     del self.product[species]
                 if product[species] > reactant[species]:
-                    self.product[species] = product[species] - reactant[species]
+                    self.product[species] = product[species] - \
+                        reactant[species]
                     del self.reactant[species]
                 if reactant[species] == product[species]:
                     del self.reactant[species]
@@ -202,8 +220,7 @@ class Reaction(object):
         # Adjust kinetic parameter
         self.__kinetic_param = (self.rate / self.reactant.ma()).cancel()
 
-
-    def _fix_ma(self, species = None):
+    def _fix_ma(self, species=None):
         """Check the numerator of the reaction rate, and adds species
         to reactant and product if they divide the numerator but their
         stoichiometry does not match the degree in the rate."""
@@ -215,18 +232,22 @@ class Reaction(object):
             while any(sp.Symbol(s) in mulargs for s in species):
                 for s in species:
                     if sp.Symbol(s) in mulargs:
-                        if s in self.reactant: self.reactant[s] = self.reactant[s] + 1
-                        else: self.reactant[s] = 1
-                        if s in self.product: self.product[s] = self.product[s] + 1
-                        else: self.product[s] = 1
+                        if s in self.reactant:
+                            self.reactant[s] = self.reactant[s] + 1
+                        else:
+                            self.reactant[s] = 1
+                        if s in self.product:
+                            self.product[s] = self.product[s] + 1
+                        else:
+                            self.product[s] = 1
                         remainder = (remainder / sp.Symbol(s)).factor()
                         if remainder.func.__name__ == 'Mul':
                             mulargs = list(remainder.args) + [i.args[0] for i in remainder.args if i.func.__name__ == 'Mul'] \
                                                            + [i.args[0] for i in remainder.args if i.func.__name__ == 'Pow']
-                        else: mulargs = []
+                        else:
+                            mulargs = []
             # update the kinetic parameter
             self.__kinetic_param = (self.rate / self.reactant.ma()).cancel()
-
 
     def _fix_denom(self, species):
         """Remove species that are involved in both reactant and product,
@@ -240,17 +261,23 @@ class Reaction(object):
             while any(sp.Symbol(s) in mulargs and s in self.reactant and s in self.product for s in species):
                 for s in species:
                     if sp.Symbol(s) in mulargs and s in self.reactant and s in self.product:
-                        if self.reactant[s] == 1: del self.reactant[s]
-                        else: self.reactant[s] = self.reactant[s] - 1
-                        if self.product[s] == 1: del self.product[s]
-                        else: self.product[s] = self.product[s] - 1
+                        if self.reactant[s] == 1:
+                            del self.reactant[s]
+                        else:
+                            self.reactant[s] = self.reactant[s] - 1
+                        if self.product[s] == 1:
+                            del self.product[s]
+                        else:
+                            self.product[s] = self.product[s] - 1
                         remainder = (remainder / sp.Symbol(s)).factor()
                         if remainder.func.__name__ == 'Mul':
                             mulargs = list(remainder.args) + [i.args[0] for i in remainder.args if i.func.__name__ == 'Mul'] \
                                                            + [i.args[0] for i in remainder.args if i.func.__name__ == 'Pow']
                         else:
-                            if str(remainder) in species: mulargs = [remainder]
-                            else: mulargs = []
+                            if str(remainder) in species:
+                                mulargs = [remainder]
+                            else:
+                                mulargs = []
         # update the kinetic parameter
         self._kinetic_param = self.rate / self.reactant.ma()
 
@@ -268,12 +295,13 @@ def _split_reaction(reaction):
         rateadds = list(ratenumer.args)
 
         for ra in range(len(rateadds)):
-            reactions.append(Reaction(reaction.reactionid + "_" + str(ra), \
-                                      reaction.reactant, \
-                                      reaction.product, \
+            reactions.append(Reaction(reaction.reactionid + "_" + str(ra),
+                                      reaction.reactant,
+                                      reaction.product,
                                       rateadds[ra] / ratedenom))
         return reactions
-    else: return [reaction]
+    else:
+        return [reaction]
 
 
 def _split_reaction_monom(reaction, species):
@@ -292,10 +320,11 @@ def _split_reaction_monom(reaction, species):
         i = 0
         for degrees in ratendict:
             i = i + 1
-            ratenpart = sp.Mul(*[species[r]**degrees[r] for r in range(len(species))]) * ratendict[degrees]
-            reactions.append(Reaction(reaction.reactionid + "_" + str(i), \
-                                      reaction.reactant, \
-                                      reaction.product, \
+            ratenpart = sp.Mul(*[species[r]**degrees[r]
+                                 for r in range(len(species))]) * ratendict[degrees]
+            reactions.append(Reaction(reaction.reactionid + "_" + str(i),
+                                      reaction.reactant,
+                                      reaction.product,
                                       ratenpart / ratedenom))
         return reactions
     return [reaction]
@@ -322,14 +351,15 @@ def merge_reactions(reactions):
     react = defaultdict(list)
     newreactions = []
     for reaction in reactions:
-        react[(tuple(sorted(reaction.reactant.items())), tuple(sorted(reaction.product.items())))].append(reaction)
+        react[(tuple(sorted(reaction.reactant.items())), tuple(
+            sorted(reaction.product.items())))].append(reaction)
     for c in react:
         if react[c][0].reactant != react[c][0].product:
-            newreactions.append(Reaction(''.join([reaction.reactionid for reaction in react[c]]), \
-                                         react[c][0].reactant, \
-                                         react[c][0].product, \
+            newreactions.append(Reaction(''.join([reaction.reactionid for reaction in react[c]]),
+                                         react[c][0].reactant,
+                                         react[c][0].product,
                                          sum([reaction.rate for reaction in react[c]]).factor()))
-    return sorted(newreactions, key = lambda r: r.reactionid)
+    return sorted(newreactions, key=lambda r: r.reactionid)
 
 
 def _same_denom(reactions):
@@ -337,7 +367,8 @@ def _same_denom(reactions):
 
     :rtype: list of Reactions.
     """
-    numers, denoms = zip(*[reaction.rate.as_numer_denom() for reaction in reactions])
+    numers, denoms = zip(*[reaction.rate.as_numer_denom()
+                           for reaction in reactions])
     commondenom = reduce(sp.lcm, denoms)
     newreactions = []
     for r in range(len(reactions)):
@@ -347,16 +378,17 @@ def _same_denom(reactions):
             if diff.func.__name__ == 'Add':
                 rateadds = list(diff.args)
                 for ra in range(len(rateadds)):
-                    newreactions.append(Reaction(reaction.reactionid + "_" + str(ra), \
-                                                 reaction.reactant, \
-                                                 reaction.product, \
+                    newreactions.append(Reaction(reaction.reactionid + "_" + str(ra),
+                                                 reaction.reactant,
+                                                 reaction.product,
                                                  rateadds[ra] * numers[r] / commondenom))
             else:
-                newreactions.append(Reaction(reaction.reactionid, \
-                                             reaction.reactant, \
-                                             reaction.product, \
+                newreactions.append(Reaction(reaction.reactionid,
+                                             reaction.reactant,
+                                             reaction.product,
                                              diff * numers[r] / commondenom))
-        else: newreactions.append(reactions[r])
+        else:
+            newreactions.append(reactions[r])
     return newreactions
 
 
@@ -371,7 +403,8 @@ def translate(reaction, c):
     :type c: string.
     :rtype: Reaction.
     """
-    rid = reaction.reactionid + "_" + str(c).replace(" ", "").replace("+", "_").replace("-", "m")
+    rid = reaction.reactionid + "_" + \
+        str(c).replace(" ", "").replace("+", "_").replace("-", "m")
     return Reaction(rid, Complex(reaction.reactant + c), Complex(reaction.product + c), reaction.rate)
 
 
