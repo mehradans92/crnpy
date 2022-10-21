@@ -1,10 +1,11 @@
+
 name: examples
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -25,13 +26,31 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest pytest-cov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Check pre-commit
-      run: pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
+        sudo apt-get update
+        sudo apt-get install glpk-utils
     - name: Install
       run: |
         pip install .
     - name: Run examples
       run: |
-         pytest tests --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-         cd examples
-         for f in *.py; do python "$f"; done
+
+    - name: Run param estimation one-sub enzyme
+      run: cd examples && python param_estimation_one_sub_enzyme.py
+    - name: Run simulation
+      run: cd examples && python simulation.py
+    - name: Runsparse dense realiz
+      run: cd examples && python sparse_dense_realiz.py
+    - name: Run param simulation one-sub enzyme
+      run: cd examples && python simulation_one_sub_enzyme.py
+    - name: Run param estimation
+      run: cd examples && python param_estimation.py
+    - name: Run kinetic rates
+      run: cd examples && python kinetic_rates.py
+    - name: Run gprotein
+      run: cd examples && python gprotein.py
+    - name: Run cooperative binding
+      run: cd examples && python cooperative_binding.py
+    - name: Run concerted coop
+      run: cd examples && python concerted_coop.py
+    - name: Run acr
+      run: cd examples && python acr.py
