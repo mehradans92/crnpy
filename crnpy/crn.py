@@ -133,6 +133,26 @@ class CRN(object):
         :rtype: tuple of strings.
         """
         return tuple(self._species)
+    
+    @property
+    def reaction_order(self):
+        """Tuple of the network species.
+
+        :Example:
+
+        >>> from crn.parsereaction import from_react
+        >>> from crnpy.reaction import Reaction
+        >>> reacts = [Reaction("r1", crnpy.Complex(A = 1), crnpy.Complex(B=1, C = 0.5), crnpy.parse_expr(f"alpha*A"), reaction_order=1),
+         Reaction("r2", crnpy.Complex(A = 1), crnpy.Complex(C=3, D = 2), crnpy.parse_expr(f"alpha*A"), reaction_order=2)]
+        >>> net = crnpy.from_reacts(reacts)
+        net.reaction_orders
+        (1,2)
+
+        The tuple of reaction orders is read-only, and can change if the reactions are updated.
+
+        :rtype: tuple of strings.
+        """
+        return tuple(self._reaction_orders)
 
 
     @property
@@ -288,6 +308,8 @@ class CRN(object):
         self._reactionids = [r.reactionid for r in self.reactions]
         self._rates = sp.Matrix([r.rate for r in self.reactions])
         self._kinetic_params = [r.kinetic_param for r in self.reactions]
+        self._reaction_orders = [r.reaction_order for r in self.reactions]
+        
 
         self._n_species = len(self.species)
 
@@ -2319,12 +2341,19 @@ def from_react_strings(reacts, rate = False):
     return from_reacts(parse_reactions(reacts, rate))
 
 
-def simulate_crn(rates, initials, molecular_weights, end_time=4, crn=None, incr=0.001, v=1, return_mass_fraction=True):
+def simulate_crn(rates, initials, molecular_weights, end_time=4, crn=None, incr=0.001, v=1,
+                 return_mass_fraction=True, mass_action_kinetics=True, kinetic_params=None):
     """Simulate the deterministic dynamics."""
     # checking the conservation of mass in all reactions
-    assert_cons_law(crn, molecular_weights)
+    crnpy.assert_cons_law(crn, molecular_weights)
+    if not mass_action_kinetics:
+        assert kinetic_params != None, "Please input kinetic parameter symbols when assuming no mass_action_kinetics!"
+        kinetic_parameters = kinetic_params
+    else:
+        print('Warning! Assuming mass-action kinetics!')
+        kinetic_parameters = crn.kinetic_params
     times = np.arange(0, end_time, incr)
-    par = dict(zip(crn.kinetic_params, rates))
+    par = dict(zip(kinetic_parameters, rates))
     # inserting rate constants in derivatives
     eqs = [e.subs(par.items()) for e in crn.equations()]
     # turning sympy equations into lambda functions
